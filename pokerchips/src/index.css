@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+body {
+  @apply min-h-screen bg-poker-green;
+}
+
+.chip {
+  @apply flex items-center justify-center rounded-full shadow-md transition-all duration-150 transform hover:scale-105 cursor-pointer select-none;
+}
+
+.chip-1 {
+  @apply bg-white text-poker-black border-4 border-poker-blue;
+}
+
+.chip-2 {
+  @apply bg-red-500 text-white border-4 border-poker-red;
+}
+
+.chip-5 {
+  @apply bg-blue-600 text-white border-4 border-poker-blue;
+}
+
+.chip-10 {
+  @apply bg-gray-800 text-white border-4 border-gray-700;
+}
+
+.chip-25 {
+  @apply bg-green-700 text-white border-4 border-green-600;
+}
+
+.chip-50 {
+  @apply bg-poker-gold text-poker-black border-4 border-yellow-600;
+}
