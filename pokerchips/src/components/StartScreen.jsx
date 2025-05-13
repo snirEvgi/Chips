@@ -5,6 +5,7 @@ const StartScreen = () => {
   const navigate = useNavigate();
   const [playerCount, setPlayerCount] = useState(2);
   const [players, setPlayers] = useState(Array(4).fill('').map((_, i) => ({ id: i, name: '' })));
+  const [maxBet, setMaxBet] = useState(100); // Default max bet of 100 chips
   
   const handleCountChange = (count) => {
     setPlayerCount(count);
@@ -23,8 +24,8 @@ const StartScreen = () => {
       currentBet: 0
     }));
     
-    // Navigate to betting screen with player data
-    navigate('/betting', { state: { players: activePlayers } });
+    // Navigate to betting screen with player data and max bet setting
+    navigate('/betting', { state: { players: activePlayers, maxBet } });
   };
 
   return (
@@ -51,7 +52,7 @@ const StartScreen = () => {
           </div>
         </div>
         
-        <div className="mb-8">
+        <div className="mb-6">
           <h2 className="text-xl font-semibold mb-3">Player Names</h2>
           <div className="space-y-3">
             {players.slice(0, playerCount).map((player) => (
@@ -67,6 +68,23 @@ const StartScreen = () => {
               </div>
             ))}
           </div>
+        </div>
+        
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-3">Max Bet Limit</h2>
+          <div className="flex items-center">
+            <input
+              type="range"
+              min="50"
+              max="500"
+              step="50"
+              value={maxBet}
+              onChange={(e) => setMaxBet(parseInt(e.target.value))}
+              className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer"
+            />
+            <span className="ml-4 text-xl font-bold min-w-[80px] text-center text-poker-blue">{maxBet}</span>
+          </div>
+          <p className="text-sm text-gray-500 mt-2">Maximum bet allowed per player per round</p>
         </div>
         
         <button

@@ -7,20 +7,30 @@ const BettingScreen = () => {
   const location = useLocation();
   const [players, setPlayers] = useState([]);
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
+  const [dealerIndex, setDealerIndex] = useState(0); // Track dealer position
   const [selectedChips, setSelectedChips] = useState([]);
   const [betHistory, setBetHistory] = useState([]);
   const [animateBet, setAnimateBet] = useState(false);
   const [totalPot, setTotalPot] = useState(0);
   const [gameStage, setGameStage] = useState('pre-flop'); // Stages: pre-flop, flop, turn, river
   const [highestBet, setHighestBet] = useState(0);
+  const [maxBet, setMaxBet] = useState(100); // Default max bet limit
   
   // Chip denominations
   const chipValues = [1, 2, 5, 10, 25, 50];
   
   useEffect(() => {
-    // Get players from router state or redirect to start screen
+    // Get players and game settings from router state or redirect to start screen
     if (location.state?.players) {
       setPlayers(location.state.players);
+      // Initialize with player 0 as dealer and first player
+      setDealerIndex(0);
+      setCurrentPlayerIndex(0);
+      
+      // Get max bet limit if provided
+      if (location.state.maxBet) {
+        setMaxBet(location.state.maxBet);
+      }
     } else {
       navigate('/');
     }
@@ -79,11 +89,28 @@ const BettingScreen = () => {
   // Check if current player can call
   const canCall = callAmount > 0;
   
+  // Calculate remaining bet amount allowed for current player
+  const calculateRemainingBetAllowed = () => {
+    const currentPlayerBet = players[currentPlayerIndex]?.currentBet || 0;
+    const currentAdditionalBet = selectedChips.reduce((sum, chip) => sum + chip, 0);
+    return maxBet - (currentPlayerBet + currentAdditionalBet);
+  };
+  
+  // Get remaining bet allowed
+  const remainingBetAllowed = calculateRemainingBetAllowed();
+  
   // Handle chip selection
   const handleChipClick = (value) => {
-    setSelectedChips([...selectedChips, value]);
-    setAnimateBet(true);
-    setTimeout(() => setAnimateBet(false), 300);
+    // Check if adding this chip would exceed the max bet limit
+    if (value <= remainingBetAllowed) {
+      setSelectedChips([...selectedChips, value]);
+      setAnimateBet(true);
+      setTimeout(() => setAnimateBet(false), 300);
+    } else {
+      // Optionally: Animate to show the bet limit has been reached
+      setAnimateBet(true);
+      setTimeout(() => setAnimateBet(false), 600);
+    }
   };
   
   // Handle removing a selected chip
@@ -170,14 +197,32 @@ const BettingScreen = () => {
   
   // Handle end round
   const handleEndRound = () => {
-    // Reset all bets and clear history
+    // Reset all bets
     setPlayers(players.map(player => ({ ...player, currentBet: 0 })));
     setBetHistory([]);
     setSelectedChips([]);
-    setCurrentPlayerIndex(0);
     setTotalPot(0);
     setHighestBet(0);
     setGameStage('pre-flop');
+    
+    // Rotate dealer position to the next player
+    const newDealerIndex = (dealerIndex + 1) % players.length;
+    setDealerIndex(newDealerIndex);
+    
+    // Set the player after the dealer as the starting player
+    const newStartingPlayerIndex = (newDealerIndex + 1) % players.length;
+    setCurrentPlayerIndex(newStartingPlayerIndex);
+    
+    // Add dealer change to history
+    const dealerChangeEntry = {
+      id: betHistory.length,
+      action: 'dealer-change',
+      oldDealer: players[dealerIndex]?.name || 'Player 1',
+      newDealer: players[newDealerIndex]?.name || 'Player 2',
+      timestamp: new Date().toLocaleTimeString()
+    };
+    
+    setBetHistory([dealerChangeEntry]);
   };
   
   // Handle new game
@@ -252,8 +297,16 @@ const BettingScreen = () => {
                   }`}
                 >
                   <div className="flex items-center">
+                    {/* Current player indicator */}
                     <span className={`h-2 sm:h-3 w-2 sm:w-3 rounded-full mr-2 sm:mr-3 ${index === currentPlayerIndex ? 'bg-green-400' : 'bg-gray-500'}`}></span>
-                    <span className="font-medium text-sm sm:text-base">{player.name}</span>
+                    
+                    {/* Player name with dealer indicator */}
+                    <div className="flex items-center">
+                      <span className="font-medium text-sm sm:text-base">{player.name}</span>
+                      {index === dealerIndex && (
+                        <span className="ml-2 text-xs px-1.5 py-0.5 bg-yellow-600 text-white rounded-full">D</span>
+                      )}
+                    </div>
                   </div>
                   <div className="font-bold text-sm sm:text-base">{player.currentBet} chips</div>
                 </div>
@@ -265,13 +318,22 @@ const BettingScreen = () => {
           <div className={`bg-poker-black bg-opacity-50 rounded-lg p-3 sm:p-4 shadow-lg ${animateBet ? 'animate-bounce-short' : ''}`}>
             <h2 className="text-lg sm:text-xl font-semibold mb-2">Current Bet</h2>
             
-            {/* Highest bet indicator */}
-            {highestBet > 0 && (
-              <div className="bg-poker-black bg-opacity-30 rounded px-3 py-1 mb-3 inline-block">
-                <span className="text-xs sm:text-sm text-gray-300">Highest bet: </span>
-                <span className="text-sm sm:text-base font-medium text-poker-gold">{highestBet} chips</span>
+            {/* Bet limits indicators */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {/* Highest bet indicator */}
+              {highestBet > 0 && (
+                <div className="bg-poker-black bg-opacity-30 rounded px-3 py-1 inline-block">
+                  <span className="text-xs sm:text-sm text-gray-300">Highest bet: </span>
+                  <span className="text-sm sm:text-base font-medium text-poker-gold">{highestBet} chips</span>
+                </div>
+              )}
+              
+              {/* Max bet indicator */}
+              <div className="bg-poker-black bg-opacity-30 rounded px-3 py-1 inline-block">
+                <span className="text-xs sm:text-sm text-gray-300">Max bet: </span>
+                <span className="text-sm sm:text-base font-medium text-red-400">{maxBet} chips</span>
               </div>
-            )}
+            </div>
             
             <div className="flex items-center justify-between">
               <div>
@@ -283,6 +345,15 @@ const BettingScreen = () => {
                     <span className="text-base sm:text-lg text-gray-400">Current: {currentPlayer.currentBet} chips</span>
                   ) : (
                     <span className="text-base sm:text-lg text-gray-400">No bet yet</span>
+                  )}
+                </div>
+                
+                {/* Remaining bet indicator */}
+                <div className="text-xs sm:text-sm text-gray-300 mt-1">
+                  {remainingBetAllowed > 0 ? (
+                    <span>Remaining: <span className="text-green-400">{remainingBetAllowed} chips</span></span>
+                  ) : (
+                    <span className="text-red-400">Max bet limit reached</span>
                   )}
                 </div>
               </div>
@@ -373,6 +444,26 @@ const BettingScreen = () => {
                           <span className="text-gray-300 capitalize">{entry.stage}</span>
                           <span className="mx-1">→</span>
                           <span className="text-yellow-400 font-medium capitalize">{entry.nextStage}</span>
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  // Handle dealer change entries
+                  if (entry.action === 'dealer-change') {
+                    return (
+                      <div 
+                        key={entry.id}
+                        className="bg-blue-900 bg-opacity-40 p-2 sm:p-3 rounded-md animate-slide-in"
+                      >
+                        <div className="flex justify-between">
+                          <span className="text-sm sm:text-base text-blue-300 font-medium">Dealer Changed</span>
+                          <span className="text-xs sm:text-sm text-gray-400">{entry.timestamp}</span>
+                        </div>
+                        <div className="text-xs sm:text-sm">
+                          <span className="text-gray-300">{entry.oldDealer}</span>
+                          <span className="mx-1">→</span>
+                          <span className="text-blue-300 font-medium">{entry.newDealer}</span>
                         </div>
                       </div>
                     );
